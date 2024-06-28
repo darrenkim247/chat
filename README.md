@@ -1,6 +1,7 @@
 Prototype Rust Chat Application
 
 To run LOCALLY: **cargo shuttle run**
+
 To deploy on SHUTTLE:
 1. Create a shuttle account: https://www.shuttle.rs/
 2. Add project to shuttle: **cargo shuttle project start**
