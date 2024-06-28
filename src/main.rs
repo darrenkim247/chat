@@ -49,13 +49,27 @@ fn post(form: Form<Message>, queue: &State<Sender<Message>>) {
     let _res = queue.send(form.into_inner());
 }
 
+/* 
 #[launch]
 fn rocket() -> _ {
-    let figment = rocket::Config::figment()
-        .merge(("address", "0.0.0.0")) // Change here
-        .merge(("port", 1111));
-    rocket::custom(figment)
+    rocket::build()
         .manage(channel::<Message>(1024).0)
         .mount("/", routes![post, events])
         .mount("/", FileServer::from(relative!("static")))
+}
+*/
+
+
+pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
+    let rocket = rocket::build()
+        .manage(channel::<Message>(1024).0)
+        .mount("/", routes![post, events])
+        .mount("/", FileServer::from(relative!("static")));
+
+    Ok(rocket.into())
+}
+
+#[shuttle_runtime::main]
+async fn shuttle_rocketeer() -> shuttle_rocket::ShuttleRocket {
+    rocketeer().await
 }

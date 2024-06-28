@@ -1,11 +1,12 @@
 [package]
-name = "chat"
-version = "0.0.0"
+name = "chat-rocket-dab"
+version = "0.1.0"
 edition = "2021"
-publish = false
 
 [dependencies]
-rocket = {features = ["json"] }
+rocket = { version = "0.5.1", features = ["json"] }
+shuttle-rocket = "0.46.0"
+shuttle-runtime = "0.46.0"
 
 [dev-dependencies]
 rand = "0.8"
