@@ -7,6 +7,8 @@ edition = "2021"
 rocket = { version = "0.5.1", features = ["json"] }
 shuttle-rocket = "0.46.0"
 shuttle-runtime = "0.46.0"
+rocket_cors = "0.6.0"
+uuid = { version = "1.4", features = ["v4"] }
 
 [dev-dependencies]
 rand = "0.8"
