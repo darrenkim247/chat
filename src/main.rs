@@ -17,6 +17,10 @@ use rocket::{Request, Response};
 use rocket::{Shutdown, State};
 use uuid::Uuid;
 
+use std::error::Error;
+use llm_chain::{executor, parameters, prompt};
+use dotenv::dotenv;
+
 // struct modified to include ID to solve duplicating message issue
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, UriDisplayQuery))]
@@ -68,6 +72,8 @@ fn all_options() {
 #[get("/events")]
 fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.subscribe();
+    // Loads environmental variables (Basically, this links our project to the OpenAI key specified in the .env file)
+    dotenv().ok();
     EventStream! {
         loop {
             let msg = select! {
@@ -84,7 +90,42 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
                 },
                 _ = &mut end => break,
             };
-            yield Event::json(&msg).event("message");
+
+            // An executor is how we call an instance of the OpenAI Model
+            let exec = match executor!() {
+                Ok(ex) => ex,
+                Err(e) => {
+                    eprintln!("Error creating executor: {:?}", e);
+                    continue;
+                }
+            };
+            
+            // Res is going to return the text-generated from OpenAI based on this prompt we fed it
+            let res = prompt!(
+                "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
+                &msg.message
+            )
+            .run(&parameters!(), &exec)
+            .await;
+            
+            // If the res was a success, I use the result to generate an message struct to send to the chat room
+            match res {
+                Ok(result) => {
+                    let ai_msg = Message{
+                        id: Some(Uuid::new_v4().to_string()),
+                        room: msg.room.clone(),
+                        username: String::from("Assistant"),
+                        message: result.to_string(),
+                    };
+                    // I moved the original message to here 
+                    yield Event::json(&msg).event("message");
+                    yield Event::json(&ai_msg).event("message");
+                },
+                Err(e) => {
+                    eprintln!("Error running prompt: {:?}", e);
+                    continue;
+                }
+            }
         }
     }
 }
