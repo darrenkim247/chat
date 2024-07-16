@@ -6,6 +6,7 @@ mod tests;
 use rocket::fairing::AdHoc;
 use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
+use rocket::fs::{relative, FileServer};
 use rocket::http::ContentType;
 use rocket::http::Header;
 use rocket::http::Status;
@@ -17,9 +18,9 @@ use rocket::{Request, Response};
 use rocket::{Shutdown, State};
 use uuid::Uuid;
 
-use std::error::Error;
-use llm_chain::{executor, parameters, prompt};
 use dotenv::dotenv;
+use llm_chain::{executor, parameters, prompt};
+use std::error::Error;
 
 // struct modified to include ID to solve duplicating message issue
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
@@ -99,7 +100,7 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
                     continue;
                 }
             };
-            
+
             // Res is going to return the text-generated from OpenAI based on this prompt we fed it
             let res = prompt!(
                 "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
@@ -107,7 +108,7 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
             )
             .run(&parameters!(), &exec)
             .await;
-            
+
             // If the res was a success, I use the result to generate an message struct to send to the chat room
             match res {
                 Ok(result) => {
@@ -117,7 +118,7 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
                         username: String::from("Assistant"),
                         message: result.to_string(),
                     };
-                    // I moved the original message to here 
+                    // I moved the original message to here
                     yield Event::json(&msg).event("message");
                     yield Event::json(&ai_msg).event("message");
                 },
@@ -145,6 +146,7 @@ pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
         .attach(CORS)
         .manage(channel::<Message>(1024).0)
         .mount("/", routes![post, events, all_options])
+        .mount("/", FileServer::from(relative!("static")))
         .attach(AdHoc::on_response("SSE Headers", |_, res| {
             Box::pin(async move {
                 if res.content_type() == Some(ContentType::EventStream) {
