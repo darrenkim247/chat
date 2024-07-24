@@ -3,18 +3,19 @@ extern crate rocket;
 #[cfg(test)]
 mod tests;
 
-use rocket::fairing::AdHoc;
-use rocket::fairing::{Fairing, Info, Kind};
+//use rocket::fairing::AdHoc;
+//use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
 use rocket::fs::{relative, FileServer};
-use rocket::http::ContentType;
-use rocket::http::Header;
+//use rocket::http::hyper::request;
+//use rocket::http::ContentType;
+//use rocket::http::Header;
 use rocket::http::Status;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
-use rocket::{Request, Response};
+//use rocket::{Request, Response};
 use rocket::{Shutdown, State};
 use uuid::Uuid;
 
@@ -41,7 +42,7 @@ struct Message {
 pub struct CORS;
 
 // A Fairing in Rocket is a type that can modify requests or responses.
-#[rocket::async_trait]
+/*#[rocket::async_trait]
 impl Fairing for CORS {
     fn info(&self) -> Info {
         Info {
@@ -62,16 +63,16 @@ impl Fairing for CORS {
         response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
     }
-}
+}*/
 
-#[options("/<_..>")]
+/*#[options("/<_..>")]
 fn all_options() {
     /* Intentionally left empty */
-}
+}*/
 
 // event stream is turned into HTTP response, retrieved from EventSource API on client side
 #[get("/events")]
-fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.subscribe();
     // Loads environmental variables (Basically, this links our project to the OpenAI key specified in the .env file)
     dotenv().ok();
@@ -91,6 +92,8 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
                 },
                 _ = &mut end => break,
             };
+            // I moved the message from the user here to display before the ai response
+            yield Event::json(&msg).event("message");
 
             // An executor is how we call an instance of the OpenAI Model
             let exec = match executor!() {
@@ -119,7 +122,6 @@ fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
                         message: result.to_string(),
                     };
                     // I moved the original message to here
-                    yield Event::json(&msg).event("message");
                     yield Event::json(&ai_msg).event("message");
                 },
                 Err(e) => {
@@ -143,18 +145,18 @@ fn post(form: Form<Message>, queue: &State<Sender<Message>>) -> Status {
 // attach CORS and removed local hosting to frontend stored in static folder
 pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build()
-        .attach(CORS)
+        /*.attach(CORS)*/
         .manage(channel::<Message>(1024).0)
-        .mount("/", routes![post, events, all_options])
-        .mount("/", FileServer::from(relative!("static")))
-        .attach(AdHoc::on_response("SSE Headers", |_, res| {
+        .mount("/", routes![post, events])
+        .mount("/", FileServer::from(relative!("static_archive")))
+        /*.attach(AdHoc::on_response("SSE Headers", |_, res| {
             Box::pin(async move {
                 if res.content_type() == Some(ContentType::EventStream) {
                     res.set_header(Header::new("Cache-Control", "no-cache"));
                     res.set_header(Header::new("Connection", "keep-alive"));
                 }
             })
-        }));
+        }))*/;
     Ok(rocket.into())
 }
 
