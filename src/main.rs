@@ -14,6 +14,7 @@ use rocket::http::Status;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::select;
+use rocket::tokio::task::spawn;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
 //use rocket::{Request, Response};
 use rocket::{Shutdown, State};
@@ -72,16 +73,15 @@ fn all_options() {
 
 // event stream is turned into HTTP response, retrieved from EventSource API on client side
 #[get("/events")]
-async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.subscribe();
-    // Loads environmental variables (Basically, this links our project to the OpenAI key specified in the .env file)
     dotenv().ok();
+
     EventStream! {
         loop {
             let msg = select! {
                 msg = rx.recv() => match msg {
                     Ok(mut msg) => {
-                        // Ensure ID is present
                         if msg.id.is_none() {
                             msg.id = Some(Uuid::new_v4().to_string());
                         }
@@ -92,40 +92,55 @@ async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStrea
                 },
                 _ = &mut end => break,
             };
-            // I moved the message from the user here to display before the ai response
-            yield Event::json(&msg).event("message");
 
-            // An executor is how we call an instance of the OpenAI Model
-            let exec = match executor!() {
-                Ok(ex) => ex,
-                Err(e) => {
-                    eprintln!("Error creating executor: {:?}", e);
-                    continue;
+            // Clone msg for AI processing
+            let ai_msg = msg.clone();
+
+            // Spawn a Tokio task to handle AI processing asynchronously
+            let ai_task = spawn(async move {
+                let exec = match executor!() {
+                    Ok(ex) => ex,
+                    Err(e) => {
+                        eprintln!("Error creating executor: {:?}", e);
+                        return None;
+                    }
+                };
+
+                let res = prompt!(
+                    "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
+                    &ai_msg.message
+                )
+                .run(&parameters!(), &exec)
+                .await;
+
+                match res {
+                    Ok(result) => {
+                        Some(Message {
+                            id: Some(Uuid::new_v4().to_string()),
+                            room: ai_msg.room,
+                            username: String::from("Assistant"),
+                            message: result.to_string(),
+                        })
+                    },
+                    Err(e) => {
+                        eprintln!("Error running prompt: {:?}", e);
+                        None
+                    }
                 }
-            };
+            });
 
-            // Res is going to return the text-generated from OpenAI based on this prompt we fed it
-            let res = prompt!(
-                "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
-                &msg.message
-            )
-            .run(&parameters!(), &exec)
-            .await;
-
-            // If the res was a success, I use the result to generate an message struct to send to the chat room
-            match res {
-                Ok(result) => {
-                    let ai_msg = Message{
-                        id: Some(Uuid::new_v4().to_string()),
-                        room: msg.room.clone(),
-                        username: String::from("Assistant"),
-                        message: result.to_string(),
-                    };
-                    // I moved the original message to here
+            // Await the AI task and handle the result
+            match ai_task.await {
+                Ok(Some(ai_msg)) => {
+                    yield Event::json(&msg).event("message");
                     yield Event::json(&ai_msg).event("message");
                 },
+                Ok(None) => {
+                    eprintln!("AI message generation failed");
+                    continue;
+                },
                 Err(e) => {
-                    eprintln!("Error running prompt: {:?}", e);
+                    eprintln!("Error awaiting AI task: {:?}", e);
                     continue;
                 }
             }
