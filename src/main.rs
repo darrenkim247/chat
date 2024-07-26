@@ -14,8 +14,8 @@ use rocket::http::Status;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::select;
-use rocket::tokio::task::spawn;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
+use rocket::tokio::task::spawn;
 //use rocket::{Request, Response};
 use rocket::{Shutdown, State};
 use uuid::Uuid;
@@ -163,7 +163,8 @@ pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
         /*.attach(CORS)*/
         .manage(channel::<Message>(1024).0)
         .mount("/", routes![post, events])
-        .mount("/", FileServer::from(relative!("static_archive")))
+        // .mount("/", FileServer::from(relative!("static_archive")))
+        .mount("/", FileServer::from(relative!("chat_react_jsx/dist")))
         /*.attach(AdHoc::on_response("SSE Headers", |_, res| {
             Box::pin(async move {
                 if res.content_type() == Some(ContentType::EventStream) {
