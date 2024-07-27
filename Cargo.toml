@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.23"
+jsonwebtoken = { version = "8.1.1", default-features = false }
+lazy_static = "1.4.0"
+serde = { version = "1.0.148", features = ["derive"] }
 rocket = { version = "0.5.1", features = ["json"] }
-shuttle-rocket = "0.46.0"
-shuttle-runtime = "0.46.0"
+shuttle-rocket = "0.47.0"
+shuttle-runtime = "0.47.0"
 rocket_cors = "0.6.0"
 uuid = { version = "1.4", features = ["v4"] }
 dotenv = "0.15.0"

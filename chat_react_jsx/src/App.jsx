@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import NamePrompt from './components/NamePrompt';
+import LogIn from './components/LogIn';
 
 const API_BASE_URL = "http://localhost:8000";
 const AI_API_URL = `${API_BASE_URL}/suggest`;
@@ -97,7 +97,7 @@ function App() {
     }
   }
   
-  function handleSetUsername(name) {
+  function handleLogin(name) {
     setUsername(name);
     setShowNamePrompt(false);
   }
@@ -140,10 +140,10 @@ function App() {
 
 return (
   <div className="flex flex-col h-screen bg-sky-10">
-     <NamePrompt 
+     <LogIn 
         vis={showNamePrompt}
         name={username}
-        setName={handleSetUsername}
+        setName={handleLogin}
       />
     <div className="flex-grow overflow-auto p-4">
       {messages.map((msg, index) => (

@@ -24,6 +24,42 @@ use dotenv::dotenv;
 use llm_chain::{executor, parameters, prompt};
 use std::error::Error;
 
+/* Additional imports for authentication */
+use rocket::response::status::Custom;
+use rocket::serde::json::Json;
+mod claims;
+use claims::Claims;
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+struct LoginResponse {
+    token: String,
+}
+
+/// Tries to authenticate a user. Successful authentications get a JWT
+#[post("/login", data = "<login>")]
+fn login(login: Json<LoginRequest>) -> Result<Json<LoginResponse>, Custom<String>> {
+    // This should be real user validation code, but is left simple for this example
+    if login.username != "username" || login.password != "password" {
+        return Err(Custom(
+            Status::Unauthorized,
+            "account was not found".to_string(),
+        ));
+    }
+
+    let claim = Claims::from_name(&login.username);
+    let response = LoginResponse {
+        token: claim.into_token()?,
+    };
+
+    Ok(Json(response))
+}
+
 // struct modified to include ID to solve duplicating message issue
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, UriDisplayQuery))]
@@ -150,8 +186,9 @@ fn all_options() {
 
 /// Returns an infinite stream of server-sent events. Each event is a message
 /// pulled from a broadcast queue sent by the `post` handler.
+/// add Claims to require authentication
 #[get("/events")]
-async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+async fn events(user: Claims, queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.subscribe();
     EventStream! {
         loop {
@@ -207,11 +244,12 @@ async fn suggest(form: Form<Message>) -> Result<String, Status> {
 }
 
 // attach CORS and removed local hosting to frontend stored in static folder
+#[shuttle_runtime::main]
 pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build()
         /*.attach(CORS)*/
         .manage(channel::<Message>(1024).0)
-        .mount("/", routes![post, events, suggest])
+        .mount("/", routes![login, post, events, suggest])
         // .mount("/", FileServer::from(relative!("static_archive")))
         .mount("/", FileServer::from(relative!("chat_react_jsx/dist")))
         /*.attach(AdHoc::on_response("SSE Headers", |_, res| {
@@ -225,7 +263,4 @@ pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     Ok(rocket.into())
 }
 
-#[shuttle_runtime::main]
-async fn shuttle_rocketeer() -> shuttle_rocket::ShuttleRocket {
-    rocketeer().await
-}
+
