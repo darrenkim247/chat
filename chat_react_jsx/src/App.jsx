@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import NamePrompt from './components/NamePrompt';
 
 const API_BASE_URL = "http://localhost:8000";
+const AI_API_URL = `${API_BASE_URL}/suggest`;
 
 function App() {
   // create state variables using the useState hook
@@ -106,16 +107,16 @@ function App() {
     const lastMessage = messages.filter(msg => msg.username !== username).slice(-1)[0];
     if (!lastMessage) return;
 
-    const prompt = `You are chatting with a friend. How would you respond to this question: "${lastMessage.message}"`;
     const response = await fetch(AI_API_URL, {
       method: "POST",
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ room: "main", username, message: lastMessage.message })
     });
 
     if (response.ok) {
-      const data = await response.json();
-      setMessage(data.suggestion);
+      const suggestion = await response.text();
+      console.log(suggestion);
+      setMessage(suggestion);
     }
   };
 

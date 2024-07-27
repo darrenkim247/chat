@@ -71,79 +71,100 @@ fn all_options() {
     /* Intentionally left empty */
 }*/
 
-// event stream is turned into HTTP response, retrieved from EventSource API on client side
-#[get("/events")]
-fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
-    let mut rx = queue.subscribe();
-    dotenv().ok();
+// // event stream is turned into HTTP response, retrieved from EventSource API on client side
+// #[get("/events")]
+// fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+//     let mut rx = queue.subscribe();
+//     dotenv().ok();
 
+//     EventStream! {
+//         loop {
+//             let msg = select! {
+//                 msg = rx.recv() => match msg {
+//                     Ok(mut msg) => {
+//                         if msg.id.is_none() {
+//                             msg.id = Some(Uuid::new_v4().to_string());
+//                         }
+//                         msg
+//                     },
+//                     Err(RecvError::Closed) => break,
+//                     Err(RecvError::Lagged(_)) => continue,
+//                 },
+//                 _ = &mut end => break,
+//             };
+
+//             // Clone msg for AI processing
+//             let ai_msg = msg.clone();
+
+//             // Spawn a Tokio task to handle AI processing asynchronously
+//             let ai_task = spawn(async move {
+//                 let exec = match executor!() {
+//                     Ok(ex) => ex,
+//                     Err(e) => {
+//                         eprintln!("Error creating executor: {:?}", e);
+//                         return None;
+//                     }
+//                 };
+
+//                 let res = prompt!(
+//                     "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
+//                     &ai_msg.message
+//                 )
+//                 .run(&parameters!(), &exec)
+//                 .await;
+
+//                 match res {
+//                     Ok(result) => {
+//                         Some(Message {
+//                             id: Some(Uuid::new_v4().to_string()),
+//                             room: ai_msg.room,
+//                             username: String::from("Assistant"),
+//                             message: result.to_string(),
+//                         })
+//                     },
+//                     Err(e) => {
+//                         eprintln!("Error running prompt: {:?}", e);
+//                         None
+//                     }
+//                 }
+//             });
+
+//             // Await the AI task and handle the result
+//             match ai_task.await {
+//                 Ok(Some(ai_msg)) => {
+//                     yield Event::json(&msg).event("message");
+//                     yield Event::json(&ai_msg).event("message");
+//                 },
+//                 Ok(None) => {
+//                     eprintln!("AI message generation failed");
+//                     continue;
+//                 },
+//                 Err(e) => {
+//                     eprintln!("Error awaiting AI task: {:?}", e);
+//                     continue;
+//                 }
+//             }
+//         }
+//     }
+// }
+
+/// Returns an infinite stream of server-sent events. Each event is a message
+/// pulled from a broadcast queue sent by the `post` handler.
+#[get("/events")]
+async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+    let mut rx = queue.subscribe();
     EventStream! {
         loop {
             let msg = select! {
                 msg = rx.recv() => match msg {
-                    Ok(mut msg) => {
-                        if msg.id.is_none() {
-                            msg.id = Some(Uuid::new_v4().to_string());
-                        }
-                        msg
-                    },
+                    Ok(msg) => msg,
                     Err(RecvError::Closed) => break,
                     Err(RecvError::Lagged(_)) => continue,
                 },
                 _ = &mut end => break,
             };
 
-            // Clone msg for AI processing
-            let ai_msg = msg.clone();
-
-            // Spawn a Tokio task to handle AI processing asynchronously
-            let ai_task = spawn(async move {
-                let exec = match executor!() {
-                    Ok(ex) => ex,
-                    Err(e) => {
-                        eprintln!("Error creating executor: {:?}", e);
-                        return None;
-                    }
-                };
-
-                let res = prompt!(
-                    "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
-                    &ai_msg.message
-                )
-                .run(&parameters!(), &exec)
-                .await;
-
-                match res {
-                    Ok(result) => {
-                        Some(Message {
-                            id: Some(Uuid::new_v4().to_string()),
-                            room: ai_msg.room,
-                            username: String::from("Assistant"),
-                            message: result.to_string(),
-                        })
-                    },
-                    Err(e) => {
-                        eprintln!("Error running prompt: {:?}", e);
-                        None
-                    }
-                }
-            });
-
-            // Await the AI task and handle the result
-            match ai_task.await {
-                Ok(Some(ai_msg)) => {
-                    yield Event::json(&msg).event("message");
-                    yield Event::json(&ai_msg).event("message");
-                },
-                Ok(None) => {
-                    eprintln!("AI message generation failed");
-                    continue;
-                },
-                Err(e) => {
-                    eprintln!("Error awaiting AI task: {:?}", e);
-                    continue;
-                }
-            }
+            yield Event::json(&msg);
         }
     }
 }
@@ -157,12 +178,40 @@ fn post(form: Form<Message>, queue: &State<Sender<Message>>) -> Status {
     Status::Ok
 }
 
+#[post("/suggest", data = "<form>")]
+async fn suggest(form: Form<Message>) -> Result<String, Status> {
+    dotenv().ok();
+    let ai_msg = form.into_inner();
+    let exec = match executor!() {
+        Ok(ex) => ex,
+        Err(e) => {
+            eprintln!("Error creating executor: {:?}", e);
+            return Err(Status::InternalServerError);
+        }
+    };
+
+    let res = prompt!(
+        "You are chatting with a friend. How would you respond to this question: \"{}\"",
+        &ai_msg.message
+    )
+    .run(&parameters!(), &exec)
+    .await;
+
+    match res {
+        Ok(result) => Ok(result.to_string()),
+        Err(e) => {
+            eprintln!("Error running prompt: {:?}", e);
+            Err(Status::InternalServerError)
+        }
+    }
+}
+
 // attach CORS and removed local hosting to frontend stored in static folder
 pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build()
         /*.attach(CORS)*/
         .manage(channel::<Message>(1024).0)
-        .mount("/", routes![post, events])
+        .mount("/", routes![post, events, suggest])
         // .mount("/", FileServer::from(relative!("static_archive")))
         .mount("/", FileServer::from(relative!("chat_react_jsx/dist")))
         /*.attach(AdHoc::on_response("SSE Headers", |_, res| {
