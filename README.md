@@ -2,7 +2,8 @@ Prototype Rust Chat Application
 
 - Update Jul 10 (BC)
   Frontend is remade with REACT. All frontend material is moved into folder react_frontend. (I didn't change anything in static, the original frontend, but i disabled the mounting, so if you load the backend server, you won't see the chat window)
-  
+- Update 27 Jul 24 (AN)
+  Authentication implemented. The username is "username", password is "password".
 ---
 
 To run LOCALLY: 
