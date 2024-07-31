@@ -114,7 +114,8 @@ function App() {
     });
 
     if (response.ok) {
-      const suggestion = await response.text();
+      let suggestion = await response.text();
+      suggestion = suggestion.replace(/^Assistant:\s*/, '');
       console.log(suggestion);
       setMessage(suggestion);
     }

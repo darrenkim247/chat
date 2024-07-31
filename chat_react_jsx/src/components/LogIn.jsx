@@ -14,7 +14,7 @@ const LogIn = ({ vis, setName }) => {
 
     // fetch the login route and post username and password to authenticate user
     try {
-      const response = await fetch('http://127.0.0.1:8000/login', {
+      const response = await fetch('/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -57,6 +57,7 @@ const LogIn = ({ vis, setName }) => {
                 value={username} 
                 placeholder='Username'
                 onChange={(e) => setUsername(e.target.value)}
+                style={{width: '100%'}}
               />
               <div className='relative w-full'>
                 <input 
@@ -65,6 +66,7 @@ const LogIn = ({ vis, setName }) => {
                   value={password} 
                   placeholder='Password'
                   onChange={(e) => setPassword(e.target.value)}
+                  style={{width: '100%'}}
                 />
                 {password && (
                   <span
@@ -73,6 +75,7 @@ const LogIn = ({ vis, setName }) => {
                     onClick={() =>
                         setShowPassword((prev) => !prev)
                     }
+                    style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
                   > 
                   {showPassword ? 'Hide' : 'Show'}
                   </span>

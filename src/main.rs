@@ -46,7 +46,6 @@ struct LoginResponse {
 /// Tries to authenticate a user. Successful authentications get a JWT
 #[post("/login", data = "<login>")]
 fn login(login: Json<LoginRequest>) -> Result<Json<LoginResponse>, Custom<String>> {
-    
     // Hardcode users' database
     let mut users_db: HashMap<String, String> = HashMap::new();
     users_db.insert("nguyea".to_string(), "nguyen".to_string());
@@ -64,7 +63,7 @@ fn login(login: Json<LoginRequest>) -> Result<Json<LoginResponse>, Custom<String
     }
 
     match users_db.get(&username) {
-        Some(v) if v!= &password => {
+        Some(v) if v != &password => {
             return Err(Custom(
                 Status::Unauthorized,
                 "account was not found".to_string(),
@@ -129,10 +128,10 @@ impl Fairing for CORS {
     }
 }*/
 
-/*#[options("/<_..>")]
-fn all_options() {
-    /* Intentionally left empty */
-}*/
+// #[options("/<_..>")]
+// fn all_options() {
+//     /* Intentionally left empty */
+// }
 
 // // event stream is turned into HTTP response, retrieved from EventSource API on client side
 // #[get("/events")]
@@ -255,7 +254,7 @@ async fn suggest(form: Form<Message>) -> Result<String, Status> {
     };
 
     let res = prompt!(
-        "You are chatting with a friend. How would you respond to this question: \"{}\"",
+        "You are chatting with a friend. Please use a friendly tone (less of an assistant) to respond to this question: \"{}\"",
         &ai_msg.message
     )
     .run(&parameters!(), &exec)
