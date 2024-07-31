@@ -3,6 +3,8 @@ extern crate rocket;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+
 //use rocket::fairing::AdHoc;
 //use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
@@ -44,20 +46,45 @@ struct LoginResponse {
 /// Tries to authenticate a user. Successful authentications get a JWT
 #[post("/login", data = "<login>")]
 fn login(login: Json<LoginRequest>) -> Result<Json<LoginResponse>, Custom<String>> {
-    // This should be real user validation code, but is left simple for this example
-    if login.username != "username" || login.password != "password" {
+    
+    // Hardcode users' database
+    let mut users_db: HashMap<String, String> = HashMap::new();
+    users_db.insert("nguyea".to_string(), "nguyen".to_string());
+    users_db.insert("brandyc".to_string(), "cao".to_string());
+    users_db.insert("darrenki".to_string(), "kim".to_string());
+
+    let username = login.username.clone();
+    let password = login.password.clone();
+
+    if !users_db.contains_key(&username) {
         return Err(Custom(
             Status::Unauthorized,
             "account was not found".to_string(),
         ));
     }
 
-    let claim = Claims::from_name(&login.username);
-    let response = LoginResponse {
-        token: claim.into_token()?,
-    };
+    match users_db.get(&username) {
+        Some(v) if v!= &password => {
+            return Err(Custom(
+                Status::Unauthorized,
+                "account was not found".to_string(),
+            ));
+        }
+        Some(_) => {
+            let claim = Claims::from_name(&login.username);
+            let response = LoginResponse {
+                token: claim.into_token()?,
+            };
 
-    Ok(Json(response))
+            Ok(Json(response))
+        }
+        None => {
+            return Err(Custom(
+                Status::Unauthorized,
+                "account was not found".to_string(),
+            ));
+        }
+    }
 }
 
 // struct modified to include ID to solve duplicating message issue
@@ -188,7 +215,7 @@ fn all_options() {
 /// pulled from a broadcast queue sent by the `post` handler.
 /// add Claims to require authentication
 #[get("/events")]
-async fn events(user: Claims, queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
     let mut rx = queue.subscribe();
     EventStream! {
         loop {
@@ -244,7 +271,6 @@ async fn suggest(form: Form<Message>) -> Result<String, Status> {
 }
 
 // attach CORS and removed local hosting to frontend stored in static folder
-#[shuttle_runtime::main]
 pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build()
         /*.attach(CORS)*/
@@ -263,4 +289,7 @@ pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     Ok(rocket.into())
 }
 
-
+#[shuttle_runtime::main]
+async fn shuttle_rocketeer() -> shuttle_rocket::ShuttleRocket {
+    rocketeer().await
+}

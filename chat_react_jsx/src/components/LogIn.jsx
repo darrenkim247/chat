@@ -85,7 +85,7 @@ const LogIn = ({ vis, setName }) => {
                 Log in
               </button>
               <p class="text-center mt-2">
-                      Don't have an account? 
+                      Don't have an account?&nbsp
                       <span class="text-purple-500">
                           Sign up
                       </span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LogIn from './components/LogIn';
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "";
 const AI_API_URL = `${API_BASE_URL}/suggest`;
 
 function App() {
