@@ -3,88 +3,24 @@ extern crate rocket;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
-
-//use rocket::fairing::AdHoc;
-//use rocket::fairing::{Fairing, Info, Kind};
+use rocket::fairing::AdHoc;
+use rocket::fairing::{Fairing, Info, Kind};
 use rocket::form::Form;
-use rocket::fs::{relative, FileServer};
-//use rocket::http::hyper::request;
-//use rocket::http::ContentType;
-//use rocket::http::Header;
+use rocket::http::ContentType;
+use rocket::http::Header;
 use rocket::http::Status;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
 use rocket::tokio::task::spawn;
-//use rocket::{Request, Response};
+use rocket::{Request, Response};
 use rocket::{Shutdown, State};
 use uuid::Uuid;
 
 use dotenv::dotenv;
 use llm_chain::{executor, parameters, prompt};
 use std::error::Error;
-
-/* Additional imports for authentication */
-use rocket::response::status::Custom;
-use rocket::serde::json::Json;
-mod claims;
-use claims::Claims;
-
-#[derive(Deserialize)]
-struct LoginRequest {
-    username: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-struct LoginResponse {
-    token: String,
-}
-
-/// Tries to authenticate a user. Successful authentications get a JWT
-#[post("/login", data = "<login>")]
-fn login(login: Json<LoginRequest>) -> Result<Json<LoginResponse>, Custom<String>> {
-    // Hardcode users' database
-    let mut users_db: HashMap<String, String> = HashMap::new();
-    users_db.insert("nguyea".to_string(), "nguyen".to_string());
-    users_db.insert("brandyc".to_string(), "cao".to_string());
-    users_db.insert("darrenki".to_string(), "kim".to_string());
-
-    let username = login.username.clone();
-    let password = login.password.clone();
-
-    if !users_db.contains_key(&username) {
-        return Err(Custom(
-            Status::Unauthorized,
-            "account was not found".to_string(),
-        ));
-    }
-
-    match users_db.get(&username) {
-        Some(v) if v != &password => {
-            return Err(Custom(
-                Status::Unauthorized,
-                "account was not found".to_string(),
-            ));
-        }
-        Some(_) => {
-            let claim = Claims::from_name(&login.username);
-            let response = LoginResponse {
-                token: claim.into_token()?,
-            };
-
-            Ok(Json(response))
-        }
-        None => {
-            return Err(Custom(
-                Status::Unauthorized,
-                "account was not found".to_string(),
-            ));
-        }
-    }
-}
 
 // struct modified to include ID to solve duplicating message issue
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
@@ -105,7 +41,7 @@ struct Message {
 pub struct CORS;
 
 // A Fairing in Rocket is a type that can modify requests or responses.
-/*#[rocket::async_trait]
+#[rocket::async_trait]
 impl Fairing for CORS {
     fn info(&self) -> Info {
         Info {
@@ -126,19 +62,19 @@ impl Fairing for CORS {
         response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
         response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
     }
-}*/
+}
 
-// #[options("/<_..>")]
-// fn all_options() {
-//     /* Intentionally left empty */
-// }
+#[options("/<_..>")]
+fn all_options() {
+    /* Intentionally left empty */
+}
 
 // // event stream is turned into HTTP response, retrieved from EventSource API on client side
 // #[get("/events")]
 // fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
 //     let mut rx = queue.subscribe();
 //     dotenv().ok();
-
+//
 //     EventStream! {
 //         loop {
 //             let msg = select! {
@@ -154,10 +90,10 @@ impl Fairing for CORS {
 //                 },
 //                 _ = &mut end => break,
 //             };
-
+//
 //             // Clone msg for AI processing
 //             let ai_msg = msg.clone();
-
+//
 //             // Spawn a Tokio task to handle AI processing asynchronously
 //             let ai_task = spawn(async move {
 //                 let exec = match executor!() {
@@ -167,14 +103,14 @@ impl Fairing for CORS {
 //                         return None;
 //                     }
 //                 };
-
+//
 //                 let res = prompt!(
 //                     "You are a robot assistant helping me draft socially appropriate responses to text messages. Respond to this message",
 //                     &ai_msg.message
 //                 )
 //                 .run(&parameters!(), &exec)
 //                 .await;
-
+//
 //                 match res {
 //                     Ok(result) => {
 //                         Some(Message {
@@ -190,7 +126,7 @@ impl Fairing for CORS {
 //                     }
 //                 }
 //             });
-
+//
 //             // Await the AI task and handle the result
 //             match ai_task.await {
 //                 Ok(Some(ai_msg)) => {
@@ -269,26 +205,20 @@ async fn suggest(form: Form<Message>) -> Result<String, Status> {
     }
 }
 
-// attach CORS and removed local hosting to frontend stored in static folder
+#[shuttle_runtime::main]
 pub async fn rocketeer() -> shuttle_rocket::ShuttleRocket {
     let rocket = rocket::build()
-        /*.attach(CORS)*/
+        .attach(CORS)
         .manage(channel::<Message>(1024).0)
-        .mount("/", routes![login, post, events, suggest])
-        // .mount("/", FileServer::from(relative!("static_archive")))
-        .mount("/", FileServer::from(relative!("chat_react_jsx/dist")))
-        /*.attach(AdHoc::on_response("SSE Headers", |_, res| {
+        .mount("/", routes![post, events, suggest])
+        //.mount("/", FileServer::from(relative!("chat_react_jsx/dist")))
+        .attach(AdHoc::on_response("SSE Headers", |_, res| {
             Box::pin(async move {
                 if res.content_type() == Some(ContentType::EventStream) {
                     res.set_header(Header::new("Cache-Control", "no-cache"));
                     res.set_header(Header::new("Connection", "keep-alive"));
                 }
             })
-        }))*/;
+        }));
     Ok(rocket.into())
-}
-
-#[shuttle_runtime::main]
-async fn shuttle_rocketeer() -> shuttle_rocket::ShuttleRocket {
-    rocketeer().await
 }
