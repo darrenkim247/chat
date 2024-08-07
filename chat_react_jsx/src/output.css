@@ -739,8 +739,17 @@ input:active, button:active {
   text-align: center;
 }
 
+.text-right{
+  text-align: right;
+}
+
 .text-lg{
   font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-sm{
+  font-size: 0.75rem;
   line-height: 1.75rem;
 }
 
@@ -756,6 +765,11 @@ input:active, button:active {
 .text-purple-500{
   --tw-text-opacity: 1;
   color: rgb(168 85 247 / var(--tw-text-opacity));
+}
+
+.text-purple-501{
+  --tw-text-opacity: 1;
+  color: rgb(85 0 128 / var(--tw-text-opacity));
 }
 
 .text-white{
@@ -807,6 +821,11 @@ body {
 .active\:translate-y-0\.5:active{
   --tw-translate-y: 0.125rem;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.icon{
+  width: 10%;
+  height: auto;
 }
 
 @media (min-width: 1024px){

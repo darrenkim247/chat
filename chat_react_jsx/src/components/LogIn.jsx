@@ -1,38 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { jwtDecode } from 'jwt-decode';
 
-const LogIn = ({ vis, setName }) => {
+const Login = ({ vis, setName, createUser }) => {
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  const submitCredentials = async (e) => {
-    e.preventDefault();
-    if (username === "" && password == "") {
-      return;
-    }
+  function handleCallbackResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+    var userObject = jwtDecode(response.credential);
+    console.log(userObject);
+    createUser(userObject)
+    setName(userObject.given_name);
+  }
 
-    // fetch the login route and post username and password to authenticate user
-    try {
-      const response = await fetch('/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username: username, password: password })
-      });
+  useEffect(() => {
+    /* global google */
+    google.accounts.id.initialize({
+      client_id: "1064643738082-uk6qcqkom3fh3ranfutp5d1orncipo4f.apps.googleusercontent.com",
+      callback: handleCallbackResponse
+    })
 
-      if (!response.ok) {
-        throw new Error('Authentication failed');
-      }
-
-      const data = await response.json();
-      console.log('Login successful', data); // Handle the successful response
-      setName(username);  // Update the username in App and hide the prompt
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+    google.accounts.id.renderButton(
+      document.getElementById("signInDiv"),
+      { theme: "outline", size: "large"}
+    )
+  }, [])
 
   return (
     <AnimatePresence>
@@ -49,51 +41,12 @@ const LogIn = ({ vis, setName }) => {
             animate={{y:0}}
             exit={{y:-500}}
           >
-            <form className='flex gap-4 flex-col items-center' onSubmit={submitCredentials}>
-              <p className='text-lg lg:text-2xl'>Log in to RustY</p>
-              <input 
-                type="text" 
-                className='px-5 py-2 rounded-xl required' 
-                value={username} 
-                placeholder='Username'
-                onChange={(e) => setUsername(e.target.value)}
-                style={{width: '100%'}}
-              />
-              <div className='relative w-full'>
-                <input 
-                  type = {showPassword ? "text" : "password"} 
-                  className='px-5 py-2 rounded-xl required' 
-                  value={password} 
-                  placeholder='Password'
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{width: '100%'}}
-                />
-                {password && (
-                  <span
-                    className="show-password"
-                    value={showPassword}
-                    onClick={() =>
-                        setShowPassword((prev) => !prev)
-                    }
-                    style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer'}}
-                  > 
-                  {showPassword ? 'Hide' : 'Show'}
-                  </span>
-                )}
+            <div className='flex gap-4 flex-col items-center'>
+              <p className='text-lg lg:text-2xl'>Welcome to RustY!</p>
+              <div className="App">
+                <div id="signInDiv"></div>
               </div>
-              <button 
-                type="submit" 
-                className='text-gray-100 bg-blue-500 px-5 py-2 rounded-xl active:translate-y-0.5 active:translate-x-0.5 hover:bg-green-500 transition-all'
-              >
-                Log in
-              </button>
-              <p class="text-center mt-2">
-                      Don't have an account?&nbsp
-                      <span class="text-purple-500">
-                          Sign up
-                      </span>
-                  </p>
-            </form>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -101,4 +54,4 @@ const LogIn = ({ vis, setName }) => {
   );
 };
 
-export default LogIn;
+export default Login;

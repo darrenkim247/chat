@@ -1,8 +1,11 @@
-# React + Vite
+This is the frontend of the chat app RustY, built using React and Vite, and hosted on Github Pages.
+--
+**npm install** before running
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+To run locally: 
+- **npm run build**
+- **npm run dev**
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+To deploy:
+- Configure "base" in **vite.config.js** and "homepage" in **package.json** accordingly
+- **npm run deploy**
