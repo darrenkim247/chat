@@ -6,9 +6,9 @@ const Login = ({ vis, setName, createUser }) => {
   const [username, setUsername] = useState('');
 
   function handleCallbackResponse(response) {
-    console.log("Encoded JWT ID token: " + response.credential);
+    console.log("Encoded JWT ID token: " + response.credential); // for debugging, remove when done
     var userObject = jwtDecode(response.credential);
-    console.log(userObject);
+    console.log(userObject); // for debugging, remove when done
     createUser(userObject)
     setName(userObject.given_name);
   }
@@ -16,7 +16,7 @@ const Login = ({ vis, setName, createUser }) => {
   useEffect(() => {
     /* global google */
     google.accounts.id.initialize({
-      client_id: "1064643738082-uk6qcqkom3fh3ranfutp5d1orncipo4f.apps.googleusercontent.com",
+      client_id: "<your-client-id>",
       callback: handleCallbackResponse
     })
 

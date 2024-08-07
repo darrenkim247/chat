@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LogIn from './components/LogIn';
 
-const API_BASE_URL = "https://chat-rusty.shuttleapp.rs";
+const API_BASE_URL = "<your-back-end-url>>";
 const AI_API_URL = `${API_BASE_URL}/suggest`;
 
 function App() {
