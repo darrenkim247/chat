@@ -2,6 +2,10 @@ RustY - A Rust Chat Application
 ---
 Live demonstration: https://einnuian.github.io/rust-y/
 
+Set up OpenAIKey:
+--
+OpenAI API Key can be configured in .env file
+
 Set up Shuttle.rs:
 --
 1. Install shuttle: https://docs.shuttle.rs/getting-started/installation
