@@ -1,5 +1,6 @@
 RustY - A Rust Chat Application
 ---
+Source Code: https://github.com/darrenkim247/chat
 Live demonstration: https://einnuian.github.io/rust-y/
 
 Set up OpenAIKey:
